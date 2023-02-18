@@ -1,13 +1,20 @@
-use crate::indexer::Indexer;
+// use std::backtrace::Backtrace;
+use crate::indexer::{Indexer, IndexerError};
 
 pub type Result<T> = std::result::Result<T, DbError>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DbError {
-  #[error("Record not found")]
-  RecordNotFound,
-  #[error("Key too long, maximum length is 10")]
-  KeyTooLong,
+  #[error("Db record not found")]
+  RecordNotFound {
+    source: IndexerError
+  },
+
+  #[error(transparent)]
+  IndexerErr{
+    #[from]
+    source: IndexerError,
+  }
 }
 
 pub struct Db {
@@ -20,15 +27,14 @@ impl Db {
   }
 
   pub async fn get(&self, key: &String) -> Result<&String> {
-    if key.len() > 10 {
-      return Err(DbError::KeyTooLong);
-    }
-
-    let record = self.indexer.get(key);
-
-    match record {
-      Some(record) => Ok(record),
-      None => Err(DbError::RecordNotFound)
+    match self.indexer.get(key) {
+      Ok(record) => Ok(record),
+      Err(err) => {
+        match err {
+          IndexerError::RecordNotFound => Err(DbError::RecordNotFound { source: err }),
+          _ => Err(DbError::IndexerErr { source: err })
+        }
+      },
     }
   }
 
