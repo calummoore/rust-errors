@@ -1,10 +1,10 @@
-use std::sync::Arc;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use serde::Serialize;
+use std::sync::Arc;
 
 mod db;
-mod indexer;
 mod errors;
+mod indexer;
 
 use crate::db::Db;
 use crate::errors::HTTPError;
@@ -26,21 +26,23 @@ async fn hello() -> impl Responder {
 
 #[get("/{id}")]
 async fn get(
-    state: web::Data<RouteState>, 
-    path: web::Path<String>
+    state: web::Data<RouteState>,
+    path: web::Path<String>,
 ) -> Result<web::Json<GetOutput>, HTTPError> {
     let db = Arc::clone(&state.db);
     let id = path.into_inner();
     let value = db.get(&id).await?;
 
-    Ok(web::Json(GetOutput { id, value: value.to_string() }))
+    Ok(web::Json(GetOutput {
+        id,
+        value: value.to_string(),
+    }))
 }
 
 #[post("/{id}/{value}")]
 async fn set(req_body: String) -> impl Responder {
     HttpResponse::Ok().body(req_body)
 }
-
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
